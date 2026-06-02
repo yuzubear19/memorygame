@@ -80,8 +80,7 @@ button.btn-sm:hover{background:#9a8a8a;color:white;}
 
 <script>
 const API_KEY = '$2a$10$mt2BLyUrJsR1jrvwdB/rBOqzh831NVxDEhHS6s7qbZIfMwwfzdiqO';
-const BIN_NAME = 'garden-memory-scores';
-let BIN_ID = localStorage.getItem('garden-bin-id') || null;
+const BIN_ID  = '6a1e5504da38895dfe79ab10';
 
 const flowers = [
   { name: 'Rose', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="80" x2="50" y2="108" stroke="#5a8a5a" stroke-width="2.5" stroke-linecap="round"/><path d="M50,82 Q38,78 36,70" stroke="#5a8a5a" stroke-width="1.5" fill="none" stroke-linecap="round"/><ellipse cx="33" cy="68" rx="9" ry="5" fill="#7ab87a" opacity="0.7" transform="rotate(-30 33 68)"/><ellipse cx="50" cy="52" rx="28" ry="28" fill="#e8a0a0" opacity="0.18"/><ellipse cx="50" cy="54" rx="22" ry="22" fill="#dd8888" opacity="0.22"/><path d="M50,75 Q32,70 28,56 Q24,40 36,32 Q44,26 50,30 Q56,26 64,32 Q76,40 72,56 Q68,70 50,75Z" fill="#d4606a" opacity="0.55"/><path d="M50,75 Q38,66 38,54 Q38,40 50,36 Q62,40 62,54 Q62,66 50,75Z" fill="#e07880" opacity="0.55"/><path d="M50,36 Q56,28 64,32 Q70,38 66,50 Q60,42 50,42Z" fill="#f0a0a8" opacity="0.5"/><path d="M50,36 Q44,28 36,32 Q30,38 34,50 Q40,42 50,42Z" fill="#f0a0a8" opacity="0.45"/><path d="M50,42 Q58,38 62,46 Q58,50 50,50 Q42,50 38,46 Q42,38 50,42Z" fill="#f5b8be" opacity="0.6"/><ellipse cx="50" cy="47" rx="7" ry="5" fill="#fde0e4" opacity="0.55"/></svg>` },
@@ -98,11 +97,10 @@ const backSVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" s
 
 let flipped=[],matched=0,moves=0,lock=false,timerVal=0,timerInterval,scores=[],lastScoreIndex=-1;
 
-function setStatus(msg){ document.getElementById('status').textContent = msg; }
+function setStatus(msg){ document.getElementById('status').textContent=msg; }
 
 async function loadScores() {
   setStatus('Loading scores...');
-  if (!BIN_ID) { setStatus(''); renderLB(); return; }
   try {
     const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
       headers: { 'X-Access-Key': API_KEY }
@@ -121,53 +119,32 @@ async function loadScores() {
 async function saveScores() {
   setStatus('Saving score...');
   try {
-    if (!BIN_ID) {
-      // Create a new bin
-      const res = await fetch('https://api.jsonbin.io/v3/b', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Access-Key': API_KEY,
-          'X-Bin-Name': 'garden-memory-scores',
-          'X-Bin-Private': 'false'
-        },
-        body: JSON.stringify({ scores })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        BIN_ID = data.metadata.id;
-        localStorage.setItem('garden-bin-id', BIN_ID);
-        setStatus('Score saved! ✿');
-      } else { setStatus('Could not save score.'); }
-    } else {
-      // Update existing bin
-      const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Access-Key': API_KEY
-        },
-        body: JSON.stringify({ scores })
-      });
-      if (res.ok) { setStatus('Score saved! ✿'); }
-      else { setStatus('Could not save score.'); }
-    }
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Access-Key': API_KEY
+      },
+      body: JSON.stringify({ scores })
+    });
+    if (res.ok) { setStatus('Score saved! ✿'); }
+    else { setStatus('Could not save score.'); }
   } catch(e) { setStatus('Could not save score.'); }
   setTimeout(()=>setStatus(''), 3000);
 }
 
 async function clearScores() {
   if (!confirm('Clear all saved scores?')) return;
-  scores = []; lastScoreIndex = -1;
-  if (BIN_ID) await saveScores();
+  scores=[]; lastScoreIndex=-1;
+  await saveScores();
   renderLB();
 }
 
 function renderLB() {
   const el = document.getElementById('lb-list');
-  if (!scores.length) { el.innerHTML = '<div class="empty-msg">Finish a game to see your score</div>'; return; }
-  const medals = ['🥇','🥈','🥉'];
-  el.innerHTML = scores.map((s,i) => `
+  if (!scores.length) { el.innerHTML='<div class="empty-msg">Finish a game to see your score</div>'; return; }
+  const medals=['🥇','🥈','🥉'];
+  el.innerHTML=scores.map((s,i)=>`
     <div class="lb-row ${i===lastScoreIndex?'is-new':''}">
       <span class="lb-rank">${medals[i]||i+1}</span>
       <span class="lb-pts">${s.score} pts${i===lastScoreIndex?'<span class="new-tag">new</span>':''}</span>
@@ -175,7 +152,7 @@ function renderLB() {
     </div>`).join('');
 }
 
-function calcScore(m,t){ return Math.max(50, Math.round(1000 - m*10 - t*2)); }
+function calcScore(m,t){ return Math.max(50,Math.round(1000-m*10-t*2)); }
 function shuffle(arr){ return [...arr,...arr].sort(()=>Math.random()-0.5); }
 
 function startGame() {
@@ -186,20 +163,20 @@ function startGame() {
   document.getElementById('timer').textContent='0s';
   document.getElementById('win').style.display='none';
   document.getElementById('newbtn').style.display='inline-block';
-  const grid = document.getElementById('grid');
+  const grid=document.getElementById('grid');
   grid.style.display='grid'; grid.innerHTML='';
-  shuffle(flowers).forEach(f => {
-    const card = document.createElement('div');
+  shuffle(flowers).forEach(f=>{
+    const card=document.createElement('div');
     card.className='card'; card.dataset.name=f.name;
     card.innerHTML=`<div class="card-face card-back">${backSVG}</div><div class="card-face card-front">${f.svg}<div class="fname">${f.name}</div></div>`;
-    card.onclick = () => flipCard(card);
+    card.onclick=()=>flipCard(card);
     grid.appendChild(card);
   });
-  timerInterval = setInterval(()=>{ timerVal++; document.getElementById('timer').textContent=timerVal+'s'; }, 1000);
+  timerInterval=setInterval(()=>{ timerVal++; document.getElementById('timer').textContent=timerVal+'s'; },1000);
 }
 
 function flipCard(card) {
-  if (lock || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+  if (lock||card.classList.contains('flipped')||card.classList.contains('matched')) return;
   card.classList.add('flipped'); flipped.push(card);
   if (flipped.length===2) {
     lock=true; moves++;
@@ -210,12 +187,12 @@ function flipCard(card) {
       flipped=[]; lock=false;
       if (matched===8) {
         clearInterval(timerInterval);
-        const score = calcScore(moves, timerVal);
-        const date = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-        const entry = {score, moves, time:timerVal, date};
+        const score=calcScore(moves,timerVal);
+        const date=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+        const entry={score,moves,time:timerVal,date};
         scores.push(entry); scores.sort((a,b)=>b.score-a.score);
         if (scores.length>10) scores=scores.slice(0,10);
-        lastScoreIndex = scores.findIndex(s=>s===entry);
+        lastScoreIndex=scores.findIndex(s=>s===entry);
         saveScores();
         setTimeout(()=>{
           document.getElementById('grid').style.display='none';
@@ -223,10 +200,10 @@ function flipCard(card) {
           document.getElementById('win-sub').textContent=`${moves} moves · ${timerVal} seconds · ${score} points`;
           document.getElementById('win').style.display='block';
           renderLB();
-        }, 700);
+        },700);
       }
     } else {
-      setTimeout(()=>{ flipped[0].classList.remove('flipped'); flipped[1].classList.remove('flipped'); flipped=[]; lock=false; }, 1000);
+      setTimeout(()=>{ flipped[0].classList.remove('flipped'); flipped[1].classList.remove('flipped'); flipped=[]; lock=false; },1000);
     }
   }
 }
