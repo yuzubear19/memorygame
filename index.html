@@ -47,6 +47,7 @@ button.btn-sm:hover{background:#9a8a8a;color:white;}
 .new-tag{font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;background:#b5697a;color:white;border-radius:10px;padding:2px 8px;margin-left:8px;vertical-align:middle;}
 .empty-msg{text-align:center;font-size:0.85rem;color:#9a8a8a;font-style:italic;padding:1rem 0;}
 .score-hint{text-align:center;font-size:0.7rem;color:#9a8a8a;margin-bottom:1.5rem;letter-spacing:0.05em;}
+.status-msg{text-align:center;font-size:0.72rem;color:#9a8a8a;margin-bottom:0.5rem;min-height:1.2em;}
 </style>
 </head>
 <body>
@@ -68,197 +69,153 @@ button.btn-sm:hover{background:#9a8a8a;color:white;}
 </div>
 <div class="btn-row"><button id="newbtn" onclick="startGame()">New game</button></div>
 <div class="score-hint">Fewer moves + faster time = higher score</div>
+<div class="status-msg" id="status"></div>
 <div class="leaderboard">
   <div class="lb-header">
     <div class="lb-title">Best scores</div>
     <button class="btn-sm" onclick="clearScores()">Clear all</button>
   </div>
-  <div id="lb-list"><div class="empty-msg">Finish a game to see your score</div></div>
+  <div id="lb-list"><div class="empty-msg">Loading scores...</div></div>
 </div>
 
 <script>
-// Each flower is a watercolor-style SVG using soft overlapping translucent shapes
+const API_KEY = '$2a$10$mt2BLyUrJsR1jrvwdB/rBOqzh831NVxDEhHS6s7qbZIfMwwfzdiqO';
+const BIN_NAME = 'garden-memory-scores';
+let BIN_ID = localStorage.getItem('garden-bin-id') || null;
+
 const flowers = [
-  { name: 'Rose', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
-    <line x1="50" y1="80" x2="50" y2="108" stroke="#5a8a5a" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M50,82 Q38,78 36,70" stroke="#5a8a5a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-    <ellipse cx="33" cy="68" rx="9" ry="5" fill="#7ab87a" opacity="0.7" transform="rotate(-30 33 68)"/>
-    <ellipse cx="50" cy="52" rx="28" ry="28" fill="#e8a0a0" opacity="0.18"/>
-    <ellipse cx="50" cy="54" rx="22" ry="22" fill="#dd8888" opacity="0.22"/>
-    <path d="M50,75 Q32,70 28,56 Q24,40 36,32 Q44,26 50,30 Q56,26 64,32 Q76,40 72,56 Q68,70 50,75Z" fill="#d4606a" opacity="0.55"/>
-    <path d="M50,75 Q38,66 38,54 Q38,40 50,36 Q62,40 62,54 Q62,66 50,75Z" fill="#e07880" opacity="0.55"/>
-    <path d="M50,36 Q56,28 64,32 Q70,38 66,50 Q60,42 50,42Z" fill="#f0a0a8" opacity="0.5"/>
-    <path d="M50,36 Q44,28 36,32 Q30,38 34,50 Q40,42 50,42Z" fill="#f0a0a8" opacity="0.45"/>
-    <path d="M50,42 Q58,38 62,46 Q58,50 50,50 Q42,50 38,46 Q42,38 50,42Z" fill="#f5b8be" opacity="0.6"/>
-    <ellipse cx="50" cy="47" rx="7" ry="5" fill="#fde0e4" opacity="0.55"/>
-  </svg>` },
-
-  { name: 'Sunflower', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
-    <line x1="50" y1="78" x2="50" y2="108" stroke="#4a7a3a" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M50,80 Q36,76 34,66" stroke="#4a7a3a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-    <ellipse cx="31" cy="64" rx="10" ry="5" fill="#6aaa5a" opacity="0.7" transform="rotate(-25 31 64)"/>
-    ${[0,22.5,45,67.5,90,112.5,135,157.5,180,202.5,225,247.5,270,292.5,315,337.5].map(a=>{
-      const r=a*Math.PI/180,x=50+Math.cos(r)*26,y=46+Math.sin(r)*26;
-      return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="5" ry="13" fill="#f5c842" opacity="0.55" transform="rotate(${a} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
-    }).join('')}
-    ${[0,22.5,45,67.5,90,112.5,135,157.5,180,202.5,225,247.5,270,292.5,315,337.5].map(a=>{
-      const r=a*Math.PI/180,x=50+Math.cos(r)*24,y=46+Math.sin(r)*24;
-      return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="4" ry="11" fill="#f0b830" opacity="0.35" transform="rotate(${a+11} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
-    }).join('')}
-    <circle cx="50" cy="46" r="16" fill="#6b3a1f" opacity="0.75"/>
-    <circle cx="50" cy="46" r="13" fill="#7a4428" opacity="0.6"/>
-    <circle cx="50" cy="46" r="10" fill="#8b5030" opacity="0.5"/>
-    ${[0,45,90,135,180,225,270,315].map(a=>{const r=a*Math.PI/180,x=50+Math.cos(r)*6,y=46+Math.sin(r)*6;return`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2" fill="#4a2010" opacity="0.5"/>`;}).join('')}
-    <circle cx="45" cy="41" r="3" fill="rgba(255,255,255,0.12)"/>
-  </svg>` },
-
-  { name: 'Tulip', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
-    <line x1="50" y1="78" x2="50" y2="108" stroke="#4a8a4a" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M50,80 Q60,74 64,64" stroke="#4a8a4a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-    <ellipse cx="67" cy="62" rx="10" ry="5" fill="#6ab86a" opacity="0.65" transform="rotate(25 67 62)"/>
-    <path d="M50,78 Q34,72 30,54 Q26,34 38,22 Q44,16 50,18 Q56,16 62,22 Q74,34 70,54 Q66,72 50,78Z" fill="#e07090" opacity="0.45"/>
-    <path d="M50,78 Q36,68 36,52 Q36,32 50,24 Q64,32 64,52 Q64,68 50,78Z" fill="#d05878" opacity="0.45"/>
-    <path d="M50,24 Q58,16 66,22 Q74,30 70,46 Q62,34 50,34Z" fill="#f090a8" opacity="0.45"/>
-    <path d="M50,24 Q42,16 34,22 Q26,30 30,46 Q38,34 50,34Z" fill="#f090a8" opacity="0.38"/>
-    <path d="M50,34 Q58,30 64,40 Q58,48 50,50 Q42,48 36,40 Q42,30 50,34Z" fill="#f8b8c8" opacity="0.5"/>
-    <ellipse cx="50" cy="42" rx="8" ry="6" fill="#fde0ea" opacity="0.5"/>
-  </svg>` },
-
-  { name: 'Lavender', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
-    <line x1="50" y1="72" x2="50" y2="108" stroke="#5a8a4a" stroke-width="2" stroke-linecap="round"/>
-    <path d="M50,72 Q38,66 34,54" stroke="#5a8a4a" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-    <ellipse cx="31" cy="52" rx="9" ry="4" fill="#7ab86a" opacity="0.6" transform="rotate(-25 31 52)"/>
-    <path d="M50,72 Q62,66 66,54" stroke="#5a8a4a" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-    <ellipse cx="69" cy="52" rx="9" ry="4" fill="#7ab86a" opacity="0.6" transform="rotate(25 69 52)"/>
-    ${[0,1,2,3,4,5,6,7,8].map(i=>{
-      const y=10+i*7, ox=(i%2===0?-4:4), op=0.35+i*0.04;
-      return `<ellipse cx="${50+ox}" cy="${y}" rx="6" ry="4.5" fill="#a070c8" opacity="${op.toFixed(2)}" transform="rotate(${ox>0?8:-8} ${50+ox} ${y})"/>
-              <ellipse cx="${50+ox}" cy="${y}" rx="4" ry="3" fill="#c090e0" opacity="${(op*0.7).toFixed(2)}" transform="rotate(${ox>0?8:-8} ${50+ox} ${y})"/>`;
-    }).join('')}
-  </svg>` },
-
-  { name: 'Daisy', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
-    <line x1="50" y1="76" x2="50" y2="108" stroke="#4a8a4a" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M50,78 Q38,74 36,64" stroke="#4a8a4a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-    <ellipse cx="33" cy="62" rx="9" ry="4.5" fill="#6ab86a" opacity="0.65" transform="rotate(-25 33 62)"/>
-    ${[0,20,40,60,80,100,120,140,160,180,200,220,240,260,280,300,320,340].map(a=>{
-      const r=a*Math.PI/180,x=50+Math.cos(r)*24,y=44+Math.sin(r)*24;
-      return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="4.5" ry="12" fill="white" opacity="0.8" stroke="#e8d8d0" stroke-width="0.5" transform="rotate(${a} ${x.toFixed(1)} ${y.toFixed(1)})"/>
-              <ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="3" ry="9" fill="white" opacity="0.5" transform="rotate(${a} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
-    }).join('')}
-    <circle cx="50" cy="44" r="13" fill="#f5d030" opacity="0.75"/>
-    <circle cx="50" cy="44" r="10" fill="#f0c020" opacity="0.65"/>
-    <circle cx="50" cy="44" r="7" fill="#e8b010" opacity="0.55"/>
-    ${[0,60,120,180,240,300].map(a=>{const r=a*Math.PI/180,x=50+Math.cos(r)*4,y=44+Math.sin(r)*4;return`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.5" fill="#c08000" opacity="0.5"/>`;}).join('')}
-    <circle cx="45" cy="40" r="3" fill="rgba(255,255,255,0.2)"/>
-  </svg>` },
-
-  { name: 'Cherry Blossom', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
-    <line x1="50" y1="76" x2="50" y2="108" stroke="#7a5540" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M50,78 Q38,72 36,62" stroke="#7a5540" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-    <path d="M50,78 Q62,72 64,62" stroke="#7a5540" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-    ${[0,72,144,216,288].map(a=>{
-      const r=a*Math.PI/180,x=50+Math.cos(r)*22,y=44+Math.sin(r)*22;
-      return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="12" ry="16" fill="#f4a0b8" opacity="0.42" transform="rotate(${a} ${x.toFixed(1)} ${y.toFixed(1)})"/>
-              <ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="9" ry="12" fill="#f8c0d0" opacity="0.38" transform="rotate(${a} ${x.toFixed(1)} ${y.toFixed(1)})"/>
-              <ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="6" ry="8" fill="#fde0ea" opacity="0.35" transform="rotate(${a} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
-    }).join('')}
-    <circle cx="50" cy="44" r="8" fill="#fff8f0" opacity="0.8"/>
-    ${[0,60,120,180,240,300].map(a=>{const r=a*Math.PI/180;return`<line x1="50" y1="44" x2="${(50+Math.cos(r)*10).toFixed(1)}" y2="${(44+Math.sin(r)*10).toFixed(1)}" stroke="#f08098" stroke-width="0.8" stroke-linecap="round" opacity="0.7"/>`;}).join('')}
-    <circle cx="50" cy="44" r="3.5" fill="#f8d030" opacity="0.8"/>
-    <circle cx="47" cy="41" r="2" fill="rgba(255,255,255,0.4)"/>
-  </svg>` },
-
-  { name: 'Orchid', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
-    <line x1="50" y1="78" x2="50" y2="108" stroke="#4a8a4a" stroke-width="2" stroke-linecap="round"/>
-    <path d="M50,80 Q38,74 36,64" stroke="#4a8a4a" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-    <ellipse cx="33" cy="62" rx="9" ry="4" fill="#6ab86a" opacity="0.6" transform="rotate(-25 33 62)"/>
-    <path d="M50,78 Q34,72 28,56 Q22,38 34,28 Q42,22 50,28Z" fill="#c880d0" opacity="0.42"/>
-    <path d="M50,78 Q66,72 72,56 Q78,38 66,28 Q58,22 50,28Z" fill="#b870c0" opacity="0.42"/>
-    <path d="M50,28 Q40,16 32,18 Q24,20 28,30 Q32,24 44,32Z" fill="#e0a8e8" opacity="0.45"/>
-    <path d="M50,28 Q60,16 68,18 Q76,20 72,30 Q68,24 56,32Z" fill="#d098e0" opacity="0.42"/>
-    <path d="M50,28 Q44,14 50,8 Q56,14 50,28Z" fill="#b860c8" opacity="0.48"/>
-    <ellipse cx="50" cy="44" rx="10" ry="7" fill="#fdf0a0" opacity="0.7"/>
-    <ellipse cx="50" cy="44" rx="7" ry="5" fill="#f8e060" opacity="0.55"/>
-    <circle cx="50" cy="42" r="3" fill="#e8a820" opacity="0.6"/>
-    <path d="M46,47 Q50,52 54,47" stroke="#d04880" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.7"/>
-  </svg>` },
-
-  { name: 'Poppy', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
-    <line x1="50" y1="78" x2="50" y2="108" stroke="#4a8a4a" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M50,80 Q62,76 64,66" stroke="#4a8a4a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-    <ellipse cx="67" cy="64" rx="9" ry="4.5" fill="#6ab86a" opacity="0.65" transform="rotate(25 67 64)"/>
-    <ellipse cx="50" cy="46" rx="30" ry="30" fill="#e85030" opacity="0.22"/>
-    <ellipse cx="50" cy="46" rx="24" ry="25" fill="#e04028" opacity="0.28"/>
-    <path d="M50,76 Q26,70 22,50 Q18,28 34,20 Q42,14 50,18 Q58,14 66,20 Q82,28 78,50 Q74,70 50,76Z" fill="#d03820" opacity="0.45"/>
-    <path d="M50,18 Q62,10 72,20 Q82,32 74,50 Q64,30 50,30Z" fill="#f07060" opacity="0.4"/>
-    <path d="M50,18 Q38,10 28,20 Q18,32 26,50 Q36,30 50,30Z" fill="#f06050" opacity="0.35"/>
-    <path d="M50,30 Q62,26 68,38 Q62,50 50,52 Q38,50 32,38 Q38,26 50,30Z" fill="#f89080" opacity="0.4"/>
-    <circle cx="50" cy="46" r="12" fill="#282820" opacity="0.72"/>
-    <circle cx="50" cy="46" r="9" fill="#303828" opacity="0.6"/>
-    ${[0,45,90,135,180,225,270,315].map(a=>{const r=a*Math.PI/180,x=50+Math.cos(r)*5,y=46+Math.sin(r)*5;return`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.5" fill="#485840" opacity="0.55"/>`;}).join('')}
-    <circle cx="45" cy="42" r="2.5" fill="rgba(255,255,255,0.12)"/>
-  </svg>` },
+  { name: 'Rose', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="80" x2="50" y2="108" stroke="#5a8a5a" stroke-width="2.5" stroke-linecap="round"/><path d="M50,82 Q38,78 36,70" stroke="#5a8a5a" stroke-width="1.5" fill="none" stroke-linecap="round"/><ellipse cx="33" cy="68" rx="9" ry="5" fill="#7ab87a" opacity="0.7" transform="rotate(-30 33 68)"/><ellipse cx="50" cy="52" rx="28" ry="28" fill="#e8a0a0" opacity="0.18"/><ellipse cx="50" cy="54" rx="22" ry="22" fill="#dd8888" opacity="0.22"/><path d="M50,75 Q32,70 28,56 Q24,40 36,32 Q44,26 50,30 Q56,26 64,32 Q76,40 72,56 Q68,70 50,75Z" fill="#d4606a" opacity="0.55"/><path d="M50,75 Q38,66 38,54 Q38,40 50,36 Q62,40 62,54 Q62,66 50,75Z" fill="#e07880" opacity="0.55"/><path d="M50,36 Q56,28 64,32 Q70,38 66,50 Q60,42 50,42Z" fill="#f0a0a8" opacity="0.5"/><path d="M50,36 Q44,28 36,32 Q30,38 34,50 Q40,42 50,42Z" fill="#f0a0a8" opacity="0.45"/><path d="M50,42 Q58,38 62,46 Q58,50 50,50 Q42,50 38,46 Q42,38 50,42Z" fill="#f5b8be" opacity="0.6"/><ellipse cx="50" cy="47" rx="7" ry="5" fill="#fde0e4" opacity="0.55"/></svg>` },
+  { name: 'Sunflower', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="78" x2="50" y2="108" stroke="#4a7a3a" stroke-width="2.5" stroke-linecap="round"/>${[0,22.5,45,67.5,90,112.5,135,157.5,180,202.5,225,247.5,270,292.5,315,337.5].map(a=>{const r=a*Math.PI/180,x=50+Math.cos(r)*26,y=46+Math.sin(r)*26;return`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="5" ry="13" fill="#f5c842" opacity="0.55" transform="rotate(${a} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;}).join('')}<circle cx="50" cy="46" r="16" fill="#6b3a1f" opacity="0.75"/><circle cx="50" cy="46" r="13" fill="#7a4428" opacity="0.6"/><circle cx="50" cy="46" r="10" fill="#8b5030" opacity="0.5"/></svg>` },
+  { name: 'Tulip', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="78" x2="50" y2="108" stroke="#4a8a4a" stroke-width="2.5" stroke-linecap="round"/><path d="M36,64 Q26,58 28,50" stroke="#388e3c" stroke-width="1.5" fill="none" stroke-linecap="round"/><ellipse cx="25" cy="49" rx="7" ry="3.5" fill="#66bb6a" opacity="0.65" transform="rotate(-25 25 49)"/><path d="M50,78 Q34,72 30,54 Q26,34 38,22 Q44,16 50,18 Q56,16 62,22 Q74,34 70,54 Q66,72 50,78Z" fill="#e07090" opacity="0.45"/><path d="M50,78 Q36,68 36,52 Q36,32 50,24 Q64,32 64,52 Q64,68 50,78Z" fill="#d05878" opacity="0.45"/><path d="M50,24 Q58,16 66,22 Q74,30 70,46 Q62,34 50,34Z" fill="#f090a8" opacity="0.45"/><path d="M50,24 Q42,16 34,22 Q26,30 30,46 Q38,34 50,34Z" fill="#f090a8" opacity="0.38"/><path d="M50,34 Q58,30 64,40 Q58,48 50,50 Q42,48 36,40 Q42,30 50,34Z" fill="#f8b8c8" opacity="0.5"/></svg>` },
+  { name: 'Lavender', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="72" x2="50" y2="108" stroke="#5a8a4a" stroke-width="2" stroke-linecap="round"/><path d="M50,72 Q38,66 34,54" stroke="#5a8a4a" stroke-width="1.4" fill="none" stroke-linecap="round"/><ellipse cx="31" cy="52" rx="9" ry="4" fill="#7ab86a" opacity="0.6" transform="rotate(-25 31 52)"/><path d="M50,72 Q62,66 66,54" stroke="#5a8a4a" stroke-width="1.4" fill="none" stroke-linecap="round"/><ellipse cx="69" cy="52" rx="9" ry="4" fill="#7ab86a" opacity="0.6" transform="rotate(25 69 52)"/>${[0,1,2,3,4,5,6,7,8].map(i=>{const y=10+i*7,ox=(i%2===0?-4:4),op=0.35+i*0.04;return`<ellipse cx="${50+ox}" cy="${y}" rx="6" ry="4.5" fill="#a070c8" opacity="${op.toFixed(2)}" transform="rotate(${ox>0?8:-8} ${50+ox} ${y})"/><ellipse cx="${50+ox}" cy="${y}" rx="4" ry="3" fill="#c090e0" opacity="${(op*0.7).toFixed(2)}" transform="rotate(${ox>0?8:-8} ${50+ox} ${y})"/>`;}).join('')}</svg>` },
+  { name: 'Daisy', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="76" x2="50" y2="108" stroke="#4a8a4a" stroke-width="2.5" stroke-linecap="round"/><path d="M50,78 Q38,74 36,64" stroke="#4a8a4a" stroke-width="1.5" fill="none" stroke-linecap="round"/><ellipse cx="33" cy="62" rx="9" ry="4.5" fill="#6ab86a" opacity="0.65" transform="rotate(-25 33 62)"/>${[0,20,40,60,80,100,120,140,160,180,200,220,240,260,280,300,320,340].map(a=>{const r=a*Math.PI/180,x=50+Math.cos(r)*24,y=44+Math.sin(r)*24;return`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="4.5" ry="12" fill="white" opacity="0.8" stroke="#e8d8d0" stroke-width="0.5" transform="rotate(${a} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;}).join('')}<circle cx="50" cy="44" r="13" fill="#f5d030" opacity="0.75"/><circle cx="50" cy="44" r="9" fill="#e8b010" opacity="0.55"/></svg>` },
+  { name: 'Cherry Blossom', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="76" x2="50" y2="108" stroke="#7a5540" stroke-width="2.5" stroke-linecap="round"/>${[0,72,144,216,288].map(a=>{const r=a*Math.PI/180,x=50+Math.cos(r)*22,y=44+Math.sin(r)*22;return`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="12" ry="16" fill="#f4a0b8" opacity="0.42" transform="rotate(${a} ${x.toFixed(1)} ${y.toFixed(1)})"/><ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="8" ry="11" fill="#fde0ea" opacity="0.38" transform="rotate(${a} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;}).join('')}<circle cx="50" cy="44" r="8" fill="#fff8f0" opacity="0.8"/><circle cx="50" cy="44" r="3.5" fill="#f8d030" opacity="0.8"/></svg>` },
+  { name: 'Orchid', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="78" x2="50" y2="108" stroke="#4a8a4a" stroke-width="2" stroke-linecap="round"/><path d="M50,78 Q34,72 28,56 Q22,38 34,28 Q42,22 50,28Z" fill="#c880d0" opacity="0.42"/><path d="M50,78 Q66,72 72,56 Q78,38 66,28 Q58,22 50,28Z" fill="#b870c0" opacity="0.42"/><path d="M50,28 Q40,16 32,18 Q24,20 28,30 Q32,24 44,32Z" fill="#e0a8e8" opacity="0.45"/><path d="M50,28 Q60,16 68,18 Q76,20 72,30 Q68,24 56,32Z" fill="#d098e0" opacity="0.42"/><path d="M50,28 Q44,14 50,8 Q56,14 50,28Z" fill="#b860c8" opacity="0.48"/><ellipse cx="50" cy="44" rx="10" ry="7" fill="#fdf0a0" opacity="0.7"/><circle cx="50" cy="42" r="3" fill="#e8a820" opacity="0.6"/></svg>` },
+  { name: 'Poppy', svg: `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="78" x2="50" y2="108" stroke="#4a8a4a" stroke-width="2.5" stroke-linecap="round"/><ellipse cx="50" cy="46" rx="30" ry="30" fill="#e85030" opacity="0.22"/><path d="M50,76 Q26,70 22,50 Q18,28 34,20 Q42,14 50,18 Q58,14 66,20 Q82,28 78,50 Q74,70 50,76Z" fill="#d03820" opacity="0.45"/><path d="M50,18 Q62,10 72,20 Q82,32 74,50 Q64,30 50,30Z" fill="#f07060" opacity="0.4"/><path d="M50,18 Q38,10 28,20 Q18,32 26,50 Q36,30 50,30Z" fill="#f06050" opacity="0.35"/><circle cx="50" cy="46" r="12" fill="#282820" opacity="0.72"/><circle cx="50" cy="46" r="9" fill="#303828" opacity="0.6"/></svg>` },
 ];
 
-const backSVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:55%;height:55%;opacity:0.3">
-  ${[0,60,120,180,240,300].map(a=>{const r=a*Math.PI/180;return`<ellipse cx="${(50+Math.cos(r)*18).toFixed(1)}" cy="${(46+Math.sin(r)*18).toFixed(1)}" rx="9" ry="14" fill="#b5697a" opacity="0.6" transform="rotate(${a} ${(50+Math.cos(r)*18).toFixed(1)} ${(46+Math.sin(r)*18).toFixed(1)})"/>`;}).join('')}
-  <circle cx="50" cy="46" r="9" fill="#c9a96e" opacity="0.7"/>
-  <line x1="50" y1="60" x2="50" y2="80" stroke="#6a9a6a" stroke-width="2.5" stroke-linecap="round"/>
-</svg>`;
+const backSVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:55%;height:55%;opacity:0.3">${[0,60,120,180,240,300].map(a=>{const r=a*Math.PI/180;return`<ellipse cx="${(50+Math.cos(r)*18).toFixed(1)}" cy="${(46+Math.sin(r)*18).toFixed(1)}" rx="9" ry="14" fill="#b5697a" opacity="0.6" transform="rotate(${a} ${(50+Math.cos(r)*18).toFixed(1)} ${(46+Math.sin(r)*18).toFixed(1)})"/>`;}).join('')}<circle cx="50" cy="46" r="9" fill="#c9a96e" opacity="0.7"/><line x1="50" y1="60" x2="50" y2="80" stroke="#6a9a6a" stroke-width="2.5" stroke-linecap="round"/></svg>`;
 
-const STORAGE_KEY='garden-scores-v4';
 let flipped=[],matched=0,moves=0,lock=false,timerVal=0,timerInterval,scores=[],lastScoreIndex=-1;
 
-function loadScores(){try{scores=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];}catch(e){scores=[];}renderLB();}
-function saveScores(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(scores));}catch(e){}}
-function clearScores(){if(!confirm('Clear all saved scores?'))return;scores=[];lastScoreIndex=-1;try{localStorage.removeItem(STORAGE_KEY);}catch(e){}renderLB();}
-function renderLB(){
-  const el=document.getElementById('lb-list');
-  if(!scores.length){el.innerHTML='<div class="empty-msg">Finish a game to see your score</div>';return;}
-  const medals=['🥇','🥈','🥉'];
-  el.innerHTML=scores.map((s,i)=>`<div class="lb-row ${i===lastScoreIndex?'is-new':''}"><span class="lb-rank">${medals[i]||i+1}</span><span class="lb-pts">${s.score} pts${i===lastScoreIndex?'<span class="new-tag">new</span>':''}</span><span class="lb-detail">${s.moves} moves · ${s.time}s · ${s.date}</span></div>`).join('');
-}
-function calcScore(m,t){return Math.max(50,Math.round(1000-m*10-t*2));}
-function shuffle(arr){return[...arr,...arr].sort(()=>Math.random()-0.5);}
+function setStatus(msg){ document.getElementById('status').textContent = msg; }
 
-function startGame(){
+async function loadScores() {
+  setStatus('Loading scores...');
+  if (!BIN_ID) { setStatus(''); renderLB(); return; }
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+      headers: { 'X-Access-Key': API_KEY }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      scores = data.record.scores || [];
+      setStatus('');
+    } else {
+      setStatus('Could not load scores.');
+    }
+  } catch(e) { setStatus('Could not load scores.'); }
+  renderLB();
+}
+
+async function saveScores() {
+  setStatus('Saving score...');
+  try {
+    if (!BIN_ID) {
+      // Create a new bin
+      const res = await fetch('https://api.jsonbin.io/v3/b', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Access-Key': API_KEY,
+          'X-Bin-Name': 'garden-memory-scores',
+          'X-Bin-Private': 'false'
+        },
+        body: JSON.stringify({ scores })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        BIN_ID = data.metadata.id;
+        localStorage.setItem('garden-bin-id', BIN_ID);
+        setStatus('Score saved! ✿');
+      } else { setStatus('Could not save score.'); }
+    } else {
+      // Update existing bin
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Access-Key': API_KEY
+        },
+        body: JSON.stringify({ scores })
+      });
+      if (res.ok) { setStatus('Score saved! ✿'); }
+      else { setStatus('Could not save score.'); }
+    }
+  } catch(e) { setStatus('Could not save score.'); }
+  setTimeout(()=>setStatus(''), 3000);
+}
+
+async function clearScores() {
+  if (!confirm('Clear all saved scores?')) return;
+  scores = []; lastScoreIndex = -1;
+  if (BIN_ID) await saveScores();
+  renderLB();
+}
+
+function renderLB() {
+  const el = document.getElementById('lb-list');
+  if (!scores.length) { el.innerHTML = '<div class="empty-msg">Finish a game to see your score</div>'; return; }
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = scores.map((s,i) => `
+    <div class="lb-row ${i===lastScoreIndex?'is-new':''}">
+      <span class="lb-rank">${medals[i]||i+1}</span>
+      <span class="lb-pts">${s.score} pts${i===lastScoreIndex?'<span class="new-tag">new</span>':''}</span>
+      <span class="lb-detail">${s.moves} moves · ${s.time}s · ${s.date}</span>
+    </div>`).join('');
+}
+
+function calcScore(m,t){ return Math.max(50, Math.round(1000 - m*10 - t*2)); }
+function shuffle(arr){ return [...arr,...arr].sort(()=>Math.random()-0.5); }
+
+function startGame() {
   clearInterval(timerInterval);
-  flipped=[];matched=0;moves=0;lock=false;timerVal=0;lastScoreIndex=-1;
+  flipped=[]; matched=0; moves=0; lock=false; timerVal=0; lastScoreIndex=-1;
   document.getElementById('moves').textContent='0';
   document.getElementById('pairs').textContent='0/8';
   document.getElementById('timer').textContent='0s';
   document.getElementById('win').style.display='none';
   document.getElementById('newbtn').style.display='inline-block';
-  const grid=document.getElementById('grid');
-  grid.style.display='grid';grid.innerHTML='';
-  shuffle(flowers).forEach(f=>{
-    const card=document.createElement('div');
-    card.className='card';card.dataset.name=f.name;
+  const grid = document.getElementById('grid');
+  grid.style.display='grid'; grid.innerHTML='';
+  shuffle(flowers).forEach(f => {
+    const card = document.createElement('div');
+    card.className='card'; card.dataset.name=f.name;
     card.innerHTML=`<div class="card-face card-back">${backSVG}</div><div class="card-face card-front">${f.svg}<div class="fname">${f.name}</div></div>`;
-    card.onclick=()=>flipCard(card);
+    card.onclick = () => flipCard(card);
     grid.appendChild(card);
   });
-  timerInterval=setInterval(()=>{timerVal++;document.getElementById('timer').textContent=timerVal+'s';},1000);
+  timerInterval = setInterval(()=>{ timerVal++; document.getElementById('timer').textContent=timerVal+'s'; }, 1000);
 }
 
-function flipCard(card){
-  if(lock||card.classList.contains('flipped')||card.classList.contains('matched'))return;
-  card.classList.add('flipped');flipped.push(card);
-  if(flipped.length===2){
-    lock=true;moves++;document.getElementById('moves').textContent=moves;
-    if(flipped[0].dataset.name===flipped[1].dataset.name){
-      flipped[0].classList.add('matched');flipped[1].classList.add('matched');
-      matched++;document.getElementById('pairs').textContent=matched+'/8';
-      flipped=[];lock=false;
-      if(matched===8){
+function flipCard(card) {
+  if (lock || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+  card.classList.add('flipped'); flipped.push(card);
+  if (flipped.length===2) {
+    lock=true; moves++;
+    document.getElementById('moves').textContent=moves;
+    if (flipped[0].dataset.name===flipped[1].dataset.name) {
+      flipped[0].classList.add('matched'); flipped[1].classList.add('matched');
+      matched++; document.getElementById('pairs').textContent=matched+'/8';
+      flipped=[]; lock=false;
+      if (matched===8) {
         clearInterval(timerInterval);
-        const score=calcScore(moves,timerVal);
-        const date=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-        const entry={score,moves,time:timerVal,date};
-        scores.push(entry);scores.sort((a,b)=>b.score-a.score);
-        if(scores.length>10)scores=scores.slice(0,10);
-        lastScoreIndex=scores.findIndex(s=>s===entry);
+        const score = calcScore(moves, timerVal);
+        const date = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+        const entry = {score, moves, time:timerVal, date};
+        scores.push(entry); scores.sort((a,b)=>b.score-a.score);
+        if (scores.length>10) scores=scores.slice(0,10);
+        lastScoreIndex = scores.findIndex(s=>s===entry);
         saveScores();
         setTimeout(()=>{
           document.getElementById('grid').style.display='none';
@@ -266,15 +223,15 @@ function flipCard(card){
           document.getElementById('win-sub').textContent=`${moves} moves · ${timerVal} seconds · ${score} points`;
           document.getElementById('win').style.display='block';
           renderLB();
-        },700);
+        }, 700);
       }
     } else {
-      setTimeout(()=>{flipped[0].classList.remove('flipped');flipped[1].classList.remove('flipped');flipped=[];lock=false;},1000);
+      setTimeout(()=>{ flipped[0].classList.remove('flipped'); flipped[1].classList.remove('flipped'); flipped=[]; lock=false; }, 1000);
     }
   }
 }
-loadScores();
-startGame();
+
+loadScores().then(()=>startGame());
 </script>
 </body>
 </html>
